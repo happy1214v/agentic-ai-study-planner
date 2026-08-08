@@ -64,17 +64,32 @@ def agent_api(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def memory_api(request):
-    memories = get_user_memories(
-        request.user,
-        limit=5,
-    )
+    try:
+        limit = int(request.GET.get("limit", 5))
 
-    serializer = AgentMemorySerializer(
-        memories,
-        many=True,
-    )
+        if limit < 1:
+            limit = 5
 
-    return Response(
-        serializer.data,
-        status=status.HTTP_200_OK,
-    )
+        if limit > 50:
+            limit = 50
+
+        memories = get_user_memories(
+            request.user,
+            limit=limit,
+        )
+
+        serializer = AgentMemorySerializer(
+            memories,
+            many=True,
+        )
+
+        return Response(
+            serializer.data,
+            status=status.HTTP_200_OK,
+        )
+
+    except ValueError:
+        return Response(
+            {"error": "limit must be a number"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
