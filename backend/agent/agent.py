@@ -1,4 +1,5 @@
 from backend.agent.tools import calculator
+from backend.agent.llm import LLM
 
 
 class AIAgent:
@@ -10,11 +11,13 @@ class AIAgent:
             "calculator": calculator
         }
 
+        self.llm = LLM()
+
     def remember(self, message):
         self.memory.append(message)
 
     def think(self, task):
-        return f"Thinking about: {task}"
+        return self.llm.generate(task)
 
     def use_tool(self, tool_name, input_data):
         tool = self.tools.get(tool_name)
@@ -27,7 +30,6 @@ class AIAgent:
     def run(self, task):
         self.remember(task)
 
-        # Decide whether calculator is needed
         if any(char.isdigit() for char in task):
             result = self.use_tool("calculator", task)
 
