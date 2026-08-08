@@ -3,6 +3,7 @@ from backend.agent.llm import LLM
 from backend.agent.planner.planner import Planner
 from backend.agent.memory.memory import Memory
 from backend.agent.router import TaskRouter
+from backend.agent.executor import Executor
 
 
 class AIAgent:
@@ -11,13 +12,14 @@ class AIAgent:
 
         self.memory = Memory()
         self.router = TaskRouter()
+        self.planner = Planner()
+        self.executor = Executor()
 
         self.tools = {
             "calculator": calculator
         }
 
         self.llm = LLM()
-        self.planner = Planner()
 
     def remember(self, message):
         self.memory.add(message)
@@ -39,11 +41,15 @@ class AIAgent:
     def create_plan(self, task):
         return self.planner.create_plan(task)
 
+    def execute_plan(self, plan):
+        return self.executor.execute(plan)
+
     def run(self, task):
         self.remember(task)
 
         task_type = self.router.route(task)
 
+        # Calculator task
         if task_type == "calculator":
             result = self.use_tool("calculator", task)
 
@@ -56,17 +62,21 @@ class AIAgent:
                 "status": "completed",
             }
 
+        # Planning task
         if task_type == "planner":
             plan = self.create_plan(task)
+            execution = self.execute_plan(plan)
 
             return {
                 "agent": self.name,
                 "task": task,
                 "type": task_type,
                 "plan": plan,
+                "execution": execution,
                 "status": "completed",
             }
 
+        # LLM task
         response = self.think(task)
 
         return {
@@ -76,4 +86,3 @@ class AIAgent:
             "response": response,
             "status": "completed",
         }
-    
