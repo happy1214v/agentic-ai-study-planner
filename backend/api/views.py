@@ -1,46 +1,43 @@
-from django.shortcuts import render
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
 
-# Create your views here.
-
-import json
-
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-
+from .serializers import AgentRequestSerializer
+from .models import AgentMemory
 from agent.agent import AIAgent
 
 
-@csrf_exempt
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
 def agent_api(request):
-    if request.method != "POST":
-        return JsonResponse(
-            {"error": "Only POST requests are allowed"},
-            status=405,
+    serializer = AgentRequestSerializer(data=request.data)
+
+    if not serializer.is_valid():
+        return Response(
+            {"error": serializer.errors},
+            status=status.HTTP_400_BAD_REQUEST,
         )
 
+    task = serializer.validated_data["task"]
+
     try:
-        data = json.loads(request.body)
-        task = data.get("task")
-
-        if not task:
-            return JsonResponse(
-                {"error": "Task is required"},
-                status=400,
-            )
-
         agent = AIAgent()
         result = agent.run(task)
 
-        return JsonResponse(result)
+        AgentMemory.objects.create(
+            user=request.user,
+            task=task,
+            result=result,
+        )
 
-    except json.JSONDecodeError:
-        return JsonResponse(
-            {"error": "Invalid JSON"},
-            status=400,
+        return Response(
+            result,
+            status=status.HTTP_200_OK,
         )
 
     except Exception as e:
-        return JsonResponse(
+        return Response(
             {"error": str(e)},
-            status=500,
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
