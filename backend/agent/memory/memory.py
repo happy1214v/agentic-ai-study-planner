@@ -8,5 +8,11 @@ class Memory:
     def get_all(self):
         return self.messages
 
+    def get_recent(self, limit=5):
+        return self.messages[-limit:]
+
     def clear(self):
         self.messages.clear()
+
+
+    

@@ -5,7 +5,9 @@ from rest_framework.permissions import IsAuthenticated
 
 from .serializers import AgentRequestSerializer, AgentMemorySerializer
 from .models import AgentMemory
+from .memory_service import get_user_memories
 from agent.agent import AIAgent
+
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
@@ -22,7 +24,24 @@ def agent_api(request):
 
     try:
         agent = AIAgent()
-        result = agent.run(task)
+
+        previous_memories = get_user_memories(
+            request.user,
+            limit=5,
+        )
+
+        context = [
+            {
+                "task": memory.task,
+                "result": memory.result,
+            }
+            for memory in previous_memories
+        ]
+
+        result = agent.run(
+            task,
+            context=context,
+        )
 
         AgentMemory.objects.create(
             user=request.user,
@@ -45,13 +64,14 @@ def agent_api(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def memory_api(request):
-    memories = AgentMemory.objects.filter(
-        user=request.user
-    ).order_by("-created_at")
+    memories = get_user_memories(
+        request.user,
+        limit=5,
+    )
 
     serializer = AgentMemorySerializer(
         memories,
-        many=True
+        many=True,
     )
 
     return Response(

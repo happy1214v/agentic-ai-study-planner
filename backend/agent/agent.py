@@ -5,6 +5,7 @@ from .memory.memory import Memory
 from .router import TaskRouter
 from .executor import Executor
 
+
 class AIAgent:
     def __init__(self):
         self.name = "Agentic AI"
@@ -43,7 +44,7 @@ class AIAgent:
     def execute_plan(self, plan):
         return self.executor.execute(plan)
 
-    def run(self, task):
+    def run(self, task, context=None):
         self.remember(task)
 
         task_type = self.router.route(task)
@@ -76,7 +77,24 @@ class AIAgent:
             }
 
         # LLM task
-        response = self.think(task)
+        llm_task = task
+
+        if context:
+            context_text = "\n".join(
+                [
+                    f"Previous task: {item['task']}\n"
+                    f"Previous result: {item['result']}"
+                    for item in context
+                ]
+            )
+
+            llm_task = (
+                f"Previous conversation context:\n"
+                f"{context_text}\n\n"
+                f"Current task: {task}"
+            )
+
+        response = self.think(llm_task)
 
         return {
             "agent": self.name,
