@@ -27,6 +27,9 @@ class AIAgent:
     def get_memory(self):
         return self.memory.get_all()
 
+    def search_memory(self, keyword):
+        return self.memory.search(keyword)
+
     def think(self, task):
         return self.llm.generate(task)
 
