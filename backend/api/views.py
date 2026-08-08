@@ -93,3 +93,27 @@ def memory_api(request):
             {"error": "limit must be a number"},
             status=status.HTTP_400_BAD_REQUEST,
         )
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def conversation_api(request):
+    memories = get_user_memories(
+        request.user,
+        limit=50,
+    )
+
+    conversations = []
+
+    for memory in memories:
+        conversations.append({
+            "id": memory.id,
+            "task": memory.task,
+            "result": memory.result,
+            "created_at": memory.created_at,
+        })
+
+    return Response(
+        conversations,
+        status=status.HTTP_200_OK,
+    )
