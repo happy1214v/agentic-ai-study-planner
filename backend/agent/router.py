@@ -3,6 +3,7 @@ class TaskRouter:
     def route(self, task):
         task_lower = task.lower()
 
+        # Calculator
         if any(word in task_lower for word in [
             "calculate",
             "addition",
@@ -12,6 +13,17 @@ class TaskRouter:
         ]):
             return "calculator"
 
+        # Date / Time
+        if any(word in task_lower for word in [
+            "time",
+            "date",
+            "today",
+            "current time",
+            "current date"
+        ]):
+            return "datetime"
+
+        # Planner
         if any(word in task_lower for word in [
             "plan",
             "schedule",
@@ -20,5 +32,6 @@ class TaskRouter:
         ]):
             return "planner"
 
+        # Default
         return "llm"
     

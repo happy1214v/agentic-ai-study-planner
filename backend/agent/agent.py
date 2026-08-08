@@ -1,4 +1,4 @@
-from .tools import calculator
+from .tools import calculator, datetime_tool
 from .llm import LLM
 from .planner.planner import Planner
 from .memory.memory import Memory
@@ -16,7 +16,8 @@ class AIAgent:
         self.executor = Executor()
 
         self.tools = {
-            "calculator": calculator
+            "calculator": calculator,
+            "datetime": datetime_tool,
         }
 
         self.llm = LLM()
@@ -38,6 +39,9 @@ class AIAgent:
 
         if not tool:
             return f"Tool '{tool_name}' not found"
+
+        if tool_name == "datetime":
+            return tool()
 
         return tool(input_data)
 
@@ -61,6 +65,18 @@ class AIAgent:
                 "task": task,
                 "type": task_type,
                 "tool": "calculator",
+                "result": result,
+                "status": "completed",
+            }
+        # Date / Time task
+        if task_type == "datetime":
+            result = self.use_tool("datetime", None)
+
+            return {
+                "agent": self.name,
+                "task": task,
+                "type": task_type,
+                "tool": "datetime",
                 "result": result,
                 "status": "completed",
             }

@@ -1,19 +1,62 @@
+import ast
+import operator
 import re
+
+
+OPERATORS = {
+    ast.Add: operator.add,
+    ast.Sub: operator.sub,
+    ast.Mult: operator.mul,
+    ast.Div: operator.truediv,
+    ast.Mod: operator.mod,
+    ast.Pow: operator.pow,
+}
+
+
+def calculate_node(node):
+    if isinstance(node, ast.Expression):
+        return calculate_node(node.body)
+
+    if isinstance(node, ast.Constant) and isinstance(node.value, (int, float)):
+        return node.value
+
+    if isinstance(node, ast.BinOp):
+        operator_function = OPERATORS.get(type(node.op))
+
+        if not operator_function:
+            raise ValueError("Unsupported operator")
+
+        left = calculate_node(node.left)
+        right = calculate_node(node.right)
+
+        return operator_function(left, right)
+
+    if isinstance(node, ast.UnaryOp):
+        value = calculate_node(node.operand)
+
+        if isinstance(node.op, ast.UAdd):
+            return +value
+
+        if isinstance(node.op, ast.USub):
+            return -value
+
+        raise ValueError("Unsupported unary operator")
+
+    raise ValueError("Invalid mathematical expression")
 
 
 def calculator(expression):
     try:
-        # Extract mathematical expression from the sentence
-        match = re.search(r"[\d+\-*/().\s]+", expression)
+        match = re.search(r"[\d+\-*/().%\s]+", expression)
 
         if not match:
             return "No mathematical expression found"
 
         math_expression = match.group().strip()
 
-        result = eval(math_expression)
+        tree = ast.parse(math_expression, mode="eval")
 
-        return result
+        return calculate_node(tree)
 
     except Exception as e:
         return f"Error: {e}"
