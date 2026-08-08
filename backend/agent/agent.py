@@ -99,6 +99,15 @@ class AIAgent:
 
         response = self.think(llm_task)
 
+        if isinstance(response, str) and response.startswith("LLM error:"):
+            return {
+                "agent": self.name,
+                "task": task,
+                "type": task_type,
+                "error": response,
+                "status": "failed",
+            }
+
         return {
             "agent": self.name,
             "task": task,
