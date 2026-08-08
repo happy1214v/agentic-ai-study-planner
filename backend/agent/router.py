@@ -1,37 +1,55 @@
 class TaskRouter:
 
     def route(self, task):
-        task_lower = task.lower()
+        task_lower = task.lower().strip()
 
         # Calculator
-        if any(word in task_lower for word in [
+        calculator_keywords = [
             "calculate",
             "addition",
+            "add",
+            "sum",
             "subtract",
+            "minus",
             "multiply",
-            "divide"
-        ]):
+            "times",
+            "divide",
+            "division",
+            "plus",
+            "minus",
+            "product",
+        ]
+
+        if any(word in task_lower for word in calculator_keywords):
             return "calculator"
 
         # Date / Time
-        if any(word in task_lower for word in [
+        datetime_keywords = [
             "time",
             "date",
             "today",
             "current time",
-            "current date"
-        ]):
+            "current date",
+            "what day",
+            "day today",
+        ]
+
+        if any(word in task_lower for word in datetime_keywords):
             return "datetime"
 
         # Planner
-        if any(word in task_lower for word in [
+        planner_keywords = [
             "plan",
+            "planning",
             "schedule",
             "roadmap",
-            "steps"
-        ]):
+            "steps",
+            "study plan",
+            "create a plan",
+        ]
+
+        if any(word in task_lower for word in planner_keywords):
             return "planner"
 
-        # Default
+        # Default → LLM
         return "llm"
-    

@@ -47,7 +47,28 @@ def calculate_node(node):
 
 def calculator(expression):
     try:
-        match = re.search(r"[\d+\-*/().%\s]+", expression)
+        expression = expression.lower()
+
+        # Natural language operators → mathematical operators
+        replacements = [
+            (r"\bplus\b", "+"),
+            (r"\badd\b", "+"),
+            (r"\bminus\b", "-"),
+            (r"\bsubtract\b", "-"),
+            (r"\btimes\b", "*"),
+            (r"\bmultiply\b", "*"),
+            (r"\bdivided by\b", "/"),
+            (r"\bdivide\b", "/"),
+            (r"\bmodulo\b", "%"),
+            (r"\bmod\b", "%"),
+            (r"\bpower of\b", "**"),
+        ]
+
+        for pattern, replacement in replacements:
+            expression = re.sub(pattern, replacement, expression)
+
+        # Extract mathematical expression
+        match = re.search(r"\d[\d+\-*/().%\s]*", expression)
 
         if not match:
             return "No mathematical expression found"
