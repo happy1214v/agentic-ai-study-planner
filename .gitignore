@@ -21,3 +21,6 @@ db.sqlite3
 .flutter-plugins
 .flutter-plugins-dependencies
 build/
+
+#open ai
+.env
