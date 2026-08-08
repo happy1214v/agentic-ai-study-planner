@@ -42,6 +42,7 @@ INSTALLED_APPS = [
 
     'rest_framework',
     'planner',
+    'api',
 ]
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',

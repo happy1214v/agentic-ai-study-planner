@@ -1,10 +1,9 @@
-from backend.agent.tools import calculator
-from backend.agent.llm import LLM
-from backend.agent.planner.planner import Planner
-from backend.agent.memory.memory import Memory
-from backend.agent.router import TaskRouter
-from backend.agent.executor import Executor
-
+from .tools import calculator
+from .llm import LLM
+from .planner.planner import Planner
+from .memory.memory import Memory
+from .router import TaskRouter
+from .executor import Executor
 
 class AIAgent:
     def __init__(self):
