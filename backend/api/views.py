@@ -3,10 +3,9 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 
-from .serializers import AgentRequestSerializer
+from .serializers import AgentRequestSerializer, AgentMemorySerializer
 from .models import AgentMemory
 from agent.agent import AIAgent
-
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
@@ -41,3 +40,21 @@ def agent_api(request):
             {"error": str(e)},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def memory_api(request):
+    memories = AgentMemory.objects.filter(
+        user=request.user
+    ).order_by("-created_at")
+
+    serializer = AgentMemorySerializer(
+        memories,
+        many=True
+    )
+
+    return Response(
+        serializer.data,
+        status=status.HTTP_200_OK,
+    )
