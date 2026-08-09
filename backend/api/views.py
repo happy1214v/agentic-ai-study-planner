@@ -5,7 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 
 from .serializers import AgentRequestSerializer, AgentMemorySerializer
 from .models import AgentMemory
-from .memory_service import get_user_memories
+from .memory_service import get_user_memories, search_relevant_memories
 from agent.agent import AIAgent
 
 
@@ -25,8 +25,9 @@ def agent_api(request):
     try:
         agent = AIAgent()
 
-        previous_memories = get_user_memories(
+        previous_memories = search_relevant_memories(
             request.user,
+            task,
             limit=5,
         )
 
