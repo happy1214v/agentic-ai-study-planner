@@ -1,4 +1,12 @@
 class Executor:
+    def __init__(self, max_retries=2):
+        self.max_retries = max_retries
+
+    def execute_step(self, step):
+        if not step or not str(step).strip():
+            raise ValueError("Invalid or empty step")
+
+        return f"Executed: {step}"
 
     def execute(self, plan):
         results = []
@@ -11,29 +19,48 @@ class Executor:
             }
 
         for step in plan:
-            if not step or not str(step).strip():
+            attempts = 0
+            success = False
+            result = None
+            error = None
+
+            while attempts <= self.max_retries:
+                attempts += 1
+
+                try:
+                    result = self.execute_step(step)
+                    success = True
+                    break
+
+                except Exception as e:
+                    error = str(e)
+
+            if success:
+                results.append({
+                    "step": step,
+                    "status": "completed",
+                    "result": result,
+                    "attempts": attempts,
+                })
+            else:
                 results.append({
                     "step": step,
                     "status": "failed",
-                    "result": "Invalid or empty step",
+                    "result": error,
+                    "attempts": attempts,
                 })
-                continue
-
-            results.append({
-                "step": step,
-                "status": "completed",
-                "result": f"Executed: {step}",
-            })
 
         failed_steps = [
-            item for item in results
+            item
+            for item in results
             if item["status"] == "failed"
         ]
 
-        if failed_steps:
-            overall_status = "failed"
-        else:
-            overall_status = "completed"
+        overall_status = (
+            "failed"
+            if failed_steps
+            else "completed"
+        )
 
         return {
             "status": overall_status,
