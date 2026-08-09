@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 from django.test import SimpleTestCase
 
 from agent.agent import AIAgent
@@ -23,10 +25,8 @@ class AIAgentTests(SimpleTestCase):
             result["routes"],
         )
 
-        calculator_result = result["results"][0]
-
         self.assertEqual(
-            calculator_result["result"],
+            result["results"][0]["result"],
             100,
         )
 
@@ -61,9 +61,14 @@ class AIAgentTests(SimpleTestCase):
         )
 
     def test_multi_intent_task(self):
-        result = self.agent.run(
-            "Calculate 20 plus 30 and explain it"
-        )
+        with patch.object(
+            self.agent,
+            "think",
+            return_value="The result is 50.",
+        ):
+            result = self.agent.run(
+                "Calculate 20 plus 30 and explain it"
+            )
 
         self.assertEqual(
             result["status"],
@@ -87,4 +92,3 @@ class AIAgentTests(SimpleTestCase):
             result["results"][1]["type"],
             "llm",
         )
-        
