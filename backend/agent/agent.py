@@ -63,92 +63,107 @@ class AIAgent:
     def run(self, task, context=None):
         self.remember(task)
 
-        task_type = self.router.route(task)
+        routes = self.router.route_multiple(task)
 
-        # Calculator task
-        if task_type == "calculator":
-            result = self.use_tool("calculator", task)
+        results = []
 
-            response = {
-                "agent": self.name,
-                "task": task,
-                "type": task_type,
-                "tool": "calculator",
-                "result": result,
-                "status": "completed",
-            }
+        for route in routes:
 
-            # Multi-step: calculate + explain
-            if "explain" in task.lower():
-                explanation = self.explain_result(
+            # Calculator
+            if route == "calculator":
+                result = self.use_tool(
+                    "calculator",
                     task,
-                    result,
                 )
 
-                response["explanation"] = explanation
+                results.append({
+                    "type": "calculator",
+                    "tool": "calculator",
+                    "result": result,
+                })
 
-            return response
+            # Date / Time
+            elif route == "datetime":
+                result = self.use_tool(
+                    "datetime",
+                    None,
+                )
 
-        # Date / Time task
-        if task_type == "datetime":
-            result = self.use_tool("datetime", None)
+                results.append({
+                    "type": "datetime",
+                    "tool": "datetime",
+                    "result": result,
+                })
 
-            return {
-                "agent": self.name,
-                "task": task,
-                "type": task_type,
-                "tool": "datetime",
-                "result": result,
-                "status": "completed",
-            }
+            # Planner
+            elif route == "planner":
+                plan = self.create_plan(task)
+                execution = self.execute_plan(plan)
 
-        # Planning task
-        if task_type == "planner":
-            plan = self.create_plan(task)
-            execution = self.execute_plan(plan)
+                results.append({
+                    "type": "planner",
+                    "plan": plan,
+                    "execution": execution,
+                })
 
-            return {
-                "agent": self.name,
-                "task": task,
-                "type": task_type,
-                "plan": plan,
-                "execution": execution,
-                "status": "completed",
-            }
+            # LLM
+            elif route == "llm":
+                llm_task = task
 
-        # LLM task
-        llm_task = task
+                if results:
+                    previous_results = "\n".join(
+                        [
+                            f"{item['type']}: {item.get('result', item.get('execution', item.get('plan', '')))}"
+                            for item in results
+                        ]
+                    )
 
-        if context:
-            context_text = "\n".join(
-                [
-                    f"Previous task: {item['task']}\n"
-                    f"Previous result: {item['result']}"
-                    for item in context
-                ]
-            )
+                    llm_task = (
+                        f"Current task: {task}\n\n"
+                        f"Results from previous actions:\n"
+                        f"{previous_results}\n\n"
+                        "Use these results to answer or explain the task clearly."
+                    )
 
-            llm_task = (
-                f"Previous conversation context:\n"
-                f"{context_text}\n\n"
-                f"Current task: {task}"
-            )
+                elif context:
+                    context_text = "\n".join(
+                        [
+                            f"Previous task: {item['task']}\n"
+                            f"Previous result: {item['result']}"
+                            for item in context
+                        ]
+                    )
 
-        response = self.think(llm_task)
+                    llm_task = (
+                        f"Previous conversation context:\n"
+                        f"{context_text}\n\n"
+                        f"Current task: {task}"
+                    )
 
-        if isinstance(response, str) and response.startswith("LLM error:"):
-            return {
-                "agent": self.name,
-                "task": task,
-                "type": task_type,
-                "error": response,
-                "status": "failed",
-            }
+                response = self.think(llm_task)
+
+                if isinstance(response, str) and response.startswith(
+                    "LLM error:"
+                ):
+                    results.append({
+                        "type": "llm",
+                        "error": response,
+                    })
+                else:
+                    results.append({
+                        "type": "llm",
+                        "response": response,
+                    })
+
+        failed = any(
+            "error" in item
+            for item in results
+        )
 
         return {
             "agent": self.name,
             "task": task,
-            "type": task_type,
-            "response": response,
-            "status": "completed",
+            "routes": routes,
+            "results": results,
+            "status": "failed" if failed else "completed",
         }
