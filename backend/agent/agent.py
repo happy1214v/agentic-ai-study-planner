@@ -122,7 +122,11 @@ class AIAgent:
                         f"Current task: {task}\n\n"
                         f"Results from previous actions:\n"
                         f"{previous_results}\n\n"
-                        "Use these results to answer or explain the task clearly."
+                        "IMPORTANT RULES:\n"
+                        "1. Treat the calculator result as authoritative and correct.\n"
+                        "2. Do not recalculate or change the calculator result.\n"
+                        "3. If explaining the result, explain the provided result clearly.\n"
+                        "4. Never provide a different numerical answer from the calculator result."
                     )
 
                 elif context:

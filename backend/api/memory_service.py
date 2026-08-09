@@ -1,4 +1,52 @@
+import re
+
 from .models import AgentMemory
+
+
+STOP_WORDS = {
+    "the",
+    "and",
+    "for",
+    "with",
+    "what",
+    "was",
+    "were",
+    "this",
+    "that",
+    "from",
+    "have",
+    "has",
+    "our",
+    "your",
+    "about",
+    "please",
+    "tell",
+    "show",
+    "give",
+    "does",
+    "did",
+    "how",
+    "why",
+    "when",
+    "where",
+}
+
+
+def normalize_words(text):
+    if not text:
+        return []
+
+    words = re.findall(
+        r"[a-zA-Z0-9]+",
+        text.lower(),
+    )
+
+    return [
+        word
+        for word in words
+        if len(word) >= 3
+        and word not in STOP_WORDS
+    ]
 
 
 def get_user_memories(user, limit=5):
@@ -9,20 +57,16 @@ def get_user_memories(user, limit=5):
 
 def search_relevant_memories(user, task, limit=5):
     """
-    Find memories that are relevant to the current task
-    using simple keyword matching.
+    Find memories relevant to the current task
+    using improved keyword scoring.
     """
 
     if not task:
         return []
 
-    words = [
-        word.lower().strip(".,!?;:()[]{}")
-        for word in task.split()
-        if len(word.strip(".,!?;:()[]{}")) >= 3
-    ]
+    task_words = normalize_words(task)
 
-    if not words:
+    if not task_words:
         return []
 
     memories = AgentMemory.objects.filter(
@@ -32,26 +76,54 @@ def search_relevant_memories(user, task, limit=5):
     scored_memories = []
 
     for memory in memories:
-        memory_text = (
-            f"{memory.task} {memory.result}"
+        memory_task_words = set(
+            normalize_words(memory.task)
+        )
+
+        memory_result_text = str(
+            memory.result
         ).lower()
 
-        score = sum(
-            1 for word in words
-            if word in memory_text
+        memory_result_words = set(
+            normalize_words(memory_result_text)
+        )
+
+        task_matches = sum(
+            1
+            for word in task_words
+            if word in memory_task_words
+        )
+
+        result_matches = sum(
+            1
+            for word in task_words
+            if word in memory_result_words
+        )
+
+        score = (
+            task_matches * 3
+            + result_matches
         )
 
         if score > 0:
             scored_memories.append(
-                (score, memory)
+                (
+                    score,
+                    memory.created_at,
+                    memory,
+                )
             )
 
     scored_memories.sort(
-        key=lambda item: item[0],
-        reverse=True
+        key=lambda item: (
+            item[0],
+            item[1],
+        ),
+        reverse=True,
     )
 
     return [
         memory
-        for score, memory in scored_memories[:limit]
+        for score, created_at, memory
+        in scored_memories[:limit]
     ]
