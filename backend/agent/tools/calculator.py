@@ -17,7 +17,9 @@ def calculate_node(node):
     if isinstance(node, ast.Expression):
         return calculate_node(node.body)
 
-    if isinstance(node, ast.Constant) and isinstance(node.value, (int, float)):
+    if isinstance(node, ast.Constant) and isinstance(
+        node.value, (int, float)
+    ):
         return node.value
 
     if isinstance(node, ast.BinOp):
@@ -49,7 +51,6 @@ def calculator(expression):
     try:
         expression = expression.lower()
 
-        # Natural language operators → mathematical operators
         replacements = [
             (r"\bplus\b", "+"),
             (r"\badd\b", "+"),
@@ -57,6 +58,7 @@ def calculator(expression):
             (r"\bsubtract\b", "-"),
             (r"\btimes\b", "*"),
             (r"\bmultiply\b", "*"),
+            (r"\bmultiplied by\b", "*"),
             (r"\bdivided by\b", "/"),
             (r"\bdivide\b", "/"),
             (r"\bmodulo\b", "%"),
@@ -65,17 +67,28 @@ def calculator(expression):
         ]
 
         for pattern, replacement in replacements:
-            expression = re.sub(pattern, replacement, expression)
+            expression = re.sub(
+                pattern,
+                replacement,
+                expression,
+            )
 
         # Extract mathematical expression
-        match = re.search(r"\d[\d+\-*/().%\s]*", expression)
+        # Extract mathematical expression
+        match = re.search(
+            r"[-+]?\d+(?:\.\d+)?(?:\s*(?:\+|-|\*|/|%|\*\*)\s*[-+]?\d+(?:\.\d+)?)*",
+             expression,
+        )
 
         if not match:
             return "No mathematical expression found"
 
         math_expression = match.group().strip()
 
-        tree = ast.parse(math_expression, mode="eval")
+        tree = ast.parse(
+            math_expression,
+            mode="eval",
+        )
 
         return calculate_node(tree)
 

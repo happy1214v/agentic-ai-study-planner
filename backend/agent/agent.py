@@ -51,6 +51,15 @@ class AIAgent:
     def execute_plan(self, plan):
         return self.executor.execute(plan)
 
+    def explain_result(self, task, result):
+        prompt = (
+            f"Original task: {task}\n"
+            f"Calculated result: {result}\n\n"
+            "Explain the calculated result clearly in simple words."
+        )
+
+        return self.think(prompt)
+
     def run(self, task, context=None):
         self.remember(task)
 
@@ -60,7 +69,7 @@ class AIAgent:
         if task_type == "calculator":
             result = self.use_tool("calculator", task)
 
-            return {
+            response = {
                 "agent": self.name,
                 "task": task,
                 "type": task_type,
@@ -68,6 +77,18 @@ class AIAgent:
                 "result": result,
                 "status": "completed",
             }
+
+            # Multi-step: calculate + explain
+            if "explain" in task.lower():
+                explanation = self.explain_result(
+                    task,
+                    result,
+                )
+
+                response["explanation"] = explanation
+
+            return response
+
         # Date / Time task
         if task_type == "datetime":
             result = self.use_tool("datetime", None)
