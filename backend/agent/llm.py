@@ -1,47 +1,42 @@
 import os
 
-import requests
 from dotenv import load_dotenv
-
+from groq import Groq
 
 load_dotenv()
 
 
 class LLM:
     def __init__(self):
-        self.ollama_url = os.getenv(
-            "OLLAMA_URL",
-            "http://127.0.0.1:11434/api/generate",
+        self.api_key = os.getenv("GROQ_API_KEY")
+        self.model = os.getenv(
+            "GROQ_MODEL",
+            "llama-3.3-70b-versatile",
         )
 
-        self.model = os.getenv(
-            "OLLAMA_MODEL",
-            "llama3.2:3b",
+        if not self.api_key:
+            raise ValueError(
+                "GROQ_API_KEY is not configured."
+            )
+
+        self.client = Groq(
+            api_key=self.api_key
         )
 
     def generate(self, prompt):
         try:
-            response = requests.post(
-                self.ollama_url,
-                json={
-                    "model": self.model,
-                    "prompt": prompt,
-                    "stream": False,
-                },
-                timeout=120,
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": prompt,
+                    }
+                ],
+                temperature=0.2,
             )
 
-            response.raise_for_status()
-
-            data = response.json()
-
-            return data.get(
-                "response",
-                "Ollama returned an empty response.",
-            )
-
-        except requests.exceptions.RequestException as e:
-            return f"LLM error: {str(e)}"
+            return response.choices[0].message.content
 
         except Exception as e:
             return f"LLM error: {str(e)}"
