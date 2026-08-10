@@ -48,4 +48,25 @@ class ApiService {
       'Memory API error: ${response.statusCode} - ${response.body}',
     );
   }
+
+  Future<List<dynamic>> getConversations(
+    String token, {
+    int limit = 50,
+  }) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/conversations/?limit=$limit'),
+      headers: {
+        'Authorization': 'Token $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as List<dynamic>;
+    }
+
+    throw Exception(
+      'Conversation API error: '
+      '${response.statusCode} - ${response.body}',
+    );
+  }
 }

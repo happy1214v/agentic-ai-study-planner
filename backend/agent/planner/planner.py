@@ -81,14 +81,11 @@ class Planner:
             return self._fit_steps(steps, requested)
 
         steps = [
-            f"Understand the task: {task}",
-            "Break the task into smaller steps",
-            "Plan the implementation",
-            "Execute each step",
-            "Test the result",
-            "Fix any issues",
-            "Review the result",
-            "Complete the task",
+                f"Understand the task: {task}",
+                "Break the task into smaller steps",
+                "Execute each step",
+                "Check the result",
+                "Complete the task",
         ]
 
         return self._fit_steps(steps, requested)

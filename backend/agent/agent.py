@@ -7,6 +7,7 @@ from .executor import Executor
 
 
 class AIAgent:
+
     def __init__(self):
         self.name = "Agentic AI"
 
@@ -22,19 +23,25 @@ class AIAgent:
 
         self.llm = LLM()
 
+
     def remember(self, message):
         self.memory.add(message)
+
 
     def get_memory(self):
         return self.memory.get_all()
 
+
     def search_memory(self, keyword):
         return self.memory.search(keyword)
+
 
     def think(self, task):
         return self.llm.generate(task)
 
+
     def use_tool(self, tool_name, input_data):
+
         tool = self.tools.get(tool_name)
 
         if not tool:
@@ -45,13 +52,17 @@ class AIAgent:
 
         return tool(input_data)
 
+
     def create_plan(self, task):
         return self.planner.create_plan(task)
+
 
     def execute_plan(self, plan):
         return self.executor.execute(plan)
 
+
     def explain_result(self, task, result):
+
         prompt = (
             f"Original task: {task}\n"
             f"Calculated result: {result}\n\n"
@@ -60,17 +71,22 @@ class AIAgent:
 
         return self.think(prompt)
 
+
     def run(self, task, context=None):
+
         self.remember(task)
 
         routes = self.router.route_multiple(task)
 
         results = []
 
+
         for route in routes:
+
 
             # Calculator
             if route == "calculator":
+
                 result = self.use_tool(
                     "calculator",
                     task,
@@ -82,8 +98,10 @@ class AIAgent:
                     "result": result,
                 })
 
-            # Date / Time
+
+            # Date Time
             elif route == "datetime":
+
                 result = self.use_tool(
                     "datetime",
                     None,
@@ -95,9 +113,12 @@ class AIAgent:
                     "result": result,
                 })
 
+
             # Planner
             elif route == "planner":
+
                 plan = self.create_plan(task)
+
                 execution = self.execute_plan(plan)
 
                 results.append({
@@ -106,63 +127,86 @@ class AIAgent:
                     "execution": execution,
                 })
 
+
             # LLM
             elif route == "llm":
+
                 llm_task = task
 
+
                 if results:
+
                     previous_results = "\n".join(
                         [
-                            f"{item['type']}: {item.get('result', item.get('execution', item.get('plan', '')))}"
+                            f"{item['type']}: "
+                            f"{item.get('result', item.get('execution', item.get('plan', '')))}"
                             for item in results
                         ]
                     )
+
 
                     llm_task = (
                         f"Current task: {task}\n\n"
                         f"Results from previous actions:\n"
                         f"{previous_results}\n\n"
                         "IMPORTANT RULES:\n"
-                        "1. Treat the calculator result as authoritative and correct.\n"
-                        "2. Do not recalculate or change the calculator result.\n"
-                        "3. If explaining the result, explain the provided result clearly.\n"
-                        "4. Never provide a different numerical answer from the calculator result."
+                        "1. Treat tool results as correct.\n"
+                        "2. Do not change calculated values.\n"
+                        "3. Explain provided results clearly.\n"
                     )
 
+
                 elif context:
-                    context_text = "\n".join(
+
+                    context_text = "\n\n".join(
                         [
-                            f"Previous task: {item['task']}\n"
-                            f"Previous result: {item['result']}"
+                            f"User asked: {item['task']}\n"
+                            f"Assistant answered: {item['result']}"
                             for item in context
                         ]
                     )
 
+
                     llm_task = (
-                        f"Previous conversation context:\n"
+                        "You are continuing an existing conversation.\n\n"
+                        "Previous conversation:\n"
                         f"{context_text}\n\n"
-                        f"Current task: {task}"
+                        f"Current user message: {task}\n\n"
+                        "Instructions:\n"
+                        "1. Understand the previous topic.\n"
+                        "2. If user says explain, continue, more, or similar short words, "
+                        "answer using previous context.\n"
+                        "3. Do not ask unnecessary clarification questions.\n"
+                        "4. Keep the conversation continuous."
                     )
 
+
                 response = self.think(llm_task)
+
 
                 if isinstance(response, str) and response.startswith(
                     "LLM error:"
                 ):
+
                     results.append({
                         "type": "llm",
                         "error": response,
                     })
+
+
                 else:
+
                     results.append({
                         "type": "llm",
                         "response": response,
                     })
 
+
         failed = any(
             "error" in item
             for item in results
         )
+
 
         return {
             "agent": self.name,

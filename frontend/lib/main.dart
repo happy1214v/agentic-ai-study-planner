@@ -50,13 +50,19 @@ class ChatPage extends StatefulWidget {
 }
 
 class _ChatPageState extends State<ChatPage> {
-  final TextEditingController _controller = TextEditingController();
-  final ScrollController _scrollController = ScrollController();
+  final TextEditingController _controller =
+      TextEditingController();
+
+  final ScrollController _scrollController =
+      ScrollController();
 
   final ApiService _apiService = ApiService();
 
   // Token is loaded from frontend/.env
-  String get _token => dotenv.get('API_TOKEN', fallback: '');
+  String get _token => dotenv.get(
+        'API_TOKEN',
+        fallback: '',
+      );
 
   bool _isLoading = false;
 
@@ -66,6 +72,10 @@ class _ChatPageState extends State<ChatPage> {
       isUser: false,
     ),
   ];
+
+  // ============================================================
+  // SEND MESSAGE
+  // ============================================================
 
   Future<void> _sendMessage() async {
     final text = _controller.text.trim();
@@ -152,12 +162,13 @@ class _ChatPageState extends State<ChatPage> {
     _scrollToBottom();
   }
 
-  // ------------------------------------------------------------
+  // ============================================================
   // RESPONSE FORMATTER
-  // ------------------------------------------------------------
+  // ============================================================
 
-  String _extractResponse(Map<String, dynamic> result) {
-    // Direct response
+  String _extractResponse(
+    Map<String, dynamic> result,
+  ) {
     final directResponse = result['response'];
 
     if (directResponse != null) {
@@ -239,7 +250,10 @@ class _ChatPageState extends State<ChatPage> {
           }
         }
 
-        // Generic response
+        // ------------------------------------------------------
+        // GENERIC RESPONSE
+        // ------------------------------------------------------
+
         final response = item['response'];
 
         if (response != null) {
@@ -275,16 +289,18 @@ class _ChatPageState extends State<ChatPage> {
     return result.toString();
   }
 
-  // ------------------------------------------------------------
+  // ============================================================
   // DATETIME FORMATTER
-  // ------------------------------------------------------------
+  // ============================================================
 
   String _formatDateTime(String value) {
     try {
       final parsed = DateTime.parse(value);
 
       final day = parsed.day.toString().padLeft(2, '0');
+
       final month = _monthName(parsed.month);
+
       final year = parsed.year;
 
       final hour = parsed.hour % 12 == 0
@@ -294,11 +310,12 @@ class _ChatPageState extends State<ChatPage> {
       final minute =
           parsed.minute.toString().padLeft(2, '0');
 
-      final period = parsed.hour >= 12 ? 'PM' : 'AM';
+      final period =
+          parsed.hour >= 12 ? 'PM' : 'AM';
 
       return '### 📅 Date & Time\n\n'
           '**$day $month $year**\n\n'
-          '🕐 **$hour:$minute $period**';
+          '🕒 **$hour:$minute $period**';
     } catch (_) {
       return value;
     }
@@ -306,7 +323,6 @@ class _ChatPageState extends State<ChatPage> {
 
   String _monthName(int month) {
     const months = [
-      '',
       'January',
       'February',
       'March',
@@ -321,54 +337,60 @@ class _ChatPageState extends State<ChatPage> {
       'December',
     ];
 
-    return months[month];
+    return months[month - 1];
   }
 
-  // ------------------------------------------------------------
+  // ============================================================
   // PLANNER FORMATTER
-  // ------------------------------------------------------------
+  // ============================================================
 
   String _formatPlanner(dynamic execution) {
-    final buffer = StringBuffer();
-
-    buffer.writeln('### 📋 Study Plan');
-    buffer.writeln();
-
     if (execution is List) {
+      final buffer = StringBuffer();
+
       int number = 1;
 
       for (final item in execution) {
+        String? step;
+        String? status;
+        String? result;
+
         if (item is Map) {
-          final step = item['step']?.toString();
+          step = item['step']?.toString();
+          status = item['status']?.toString();
+          result = item['result']?.toString();
+        } else {
+          step = item.toString();
+        }
 
-          final status =
-              item['status']?.toString() ?? 'completed';
+        if (step != null) {
+          buffer.writeln(
+            '### Step $number',
+          );
 
-          final result =
-              item['result']?.toString();
+          buffer.writeln(
+            '**$step**',
+          );
 
-          if (step != null && step.isNotEmpty) {
-            buffer.writeln(
-              '**$number. $step**',
-            );
-
-            if (status.toLowerCase() == 'completed') {
-              buffer.writeln('✅ Completed');
-            } else {
-              buffer.writeln('⏳ $status');
-            }
-
-            if (result != null &&
-                result.isNotEmpty &&
-                !result.startsWith('Executed:')) {
-              buffer.writeln();
-              buffer.writeln(result);
-            }
-
+          if (status != null) {
             buffer.writeln();
 
-            number++;
+            buffer.writeln(
+              'Status: `$status`',
+            );
           }
+
+          if (result != null &&
+              result.isNotEmpty &&
+              !result.startsWith('Executed:')) {
+            buffer.writeln();
+
+            buffer.writeln(result);
+          }
+
+          buffer.writeln();
+
+          number++;
         }
       }
 
@@ -377,30 +399,354 @@ class _ChatPageState extends State<ChatPage> {
       }
     }
 
-    // If planner data is not a List
     if (execution is Map) {
       final nestedResults = execution['results'];
 
       if (nestedResults is List) {
-        return _formatPlanner(nestedResults);
+        return _formatPlanner(
+          nestedResults,
+        );
       }
     }
 
     return execution.toString();
   }
 
-  // ------------------------------------------------------------
+  // ============================================================
+  // CHAT HISTORY
+  // ============================================================
+
+  Future<void> _showChatHistory() async {
+    if (_token.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'API token is not configured.',
+          ),
+        ),
+      );
+
+      return;
+    }
+
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) {
+        return FutureBuilder<List<dynamic>>(
+          future: _apiService.getConversations(
+            _token,
+          ),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState ==
+                ConnectionState.waiting) {
+              return const AlertDialog(
+                title: Text('Chat History'),
+                content: SizedBox(
+                  height: 80,
+                  child: Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                ),
+              );
+            }
+
+            if (snapshot.hasError) {
+              return AlertDialog(
+                title: const Text(
+                  'Chat History',
+                ),
+                content: Text(
+                  'Unable to load history.\n\n'
+                  '${snapshot.error}',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                    child: const Text('Close'),
+                  ),
+                ],
+              );
+            }
+
+            final conversations =
+                snapshot.data ?? [];
+
+            if (conversations.isEmpty) {
+              return AlertDialog(
+                title: const Text(
+                  'Chat History',
+                ),
+                content: const Text(
+                  'No conversations found.',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                    child: const Text('Close'),
+                  ),
+                ],
+              );
+            }
+
+            return AlertDialog(
+              title: const Row(
+                children: [
+                  Icon(Icons.history),
+                  SizedBox(width: 8),
+                  Text('Chat History'),
+                ],
+              ),
+              content: SizedBox(
+                width: 650,
+                height: 500,
+                child: ListView.separated(
+                  itemCount: conversations.length,
+                  separatorBuilder: (_, __) {
+                    return const Divider();
+                  },
+                  itemBuilder: (
+                    context,
+                    index,
+                  ) {
+                    final item =
+                        conversations[index];
+
+                    final task =
+                        item['task']?.toString() ??
+                            'Untitled';
+
+                    final result =
+                        item['result'];
+
+                    final createdAt =
+                        item['created_at']
+                            ?.toString();
+
+                    return ListTile(
+                      leading: const CircleAvatar(
+                        child: Icon(
+                          Icons.chat,
+                        ),
+                      ),
+                      title: Text(
+                        task,
+                        maxLines: 2,
+                        overflow:
+                            TextOverflow.ellipsis,
+                      ),
+                      subtitle: Column(
+                        crossAxisAlignment:
+                            CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(
+                            height: 4,
+                          ),
+                          Text(
+                            _historyPreview(
+                              result,
+                            ),
+                            maxLines: 2,
+                            overflow:
+                                TextOverflow.ellipsis,
+                          ),
+                          if (createdAt != null)
+                            Padding(
+                              padding:
+                                  const EdgeInsets
+                                      .only(
+                                top: 4,
+                              ),
+                              child: Text(
+                                _formatHistoryDate(
+                                  createdAt,
+                                ),
+                                style:
+                                    Theme.of(
+                                  context,
+                                )
+                                        .textTheme
+                                        .bodySmall,
+                              ),
+                            ),
+                        ],
+                      ),
+                      onTap: () {
+                        Navigator.pop(
+                          context,
+                        );
+
+                        _loadConversation(
+                          item,
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  child: const Text('Close'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // ============================================================
+  // HISTORY PREVIEW
+  // ============================================================
+
+  String _historyPreview(dynamic result) {
+    if (result is Map) {
+      final results = result['results'];
+
+      if (results is List &&
+          results.isNotEmpty) {
+        for (final item in results.reversed) {
+          if (item is Map) {
+            final response =
+                item['response'];
+
+            if (response != null) {
+              return response.toString();
+            }
+
+            final value =
+                item['result'];
+
+            if (value != null) {
+              return value.toString();
+            }
+
+            final execution =
+                item['execution'];
+
+            if (execution != null) {
+              return _formatPlanner(
+                execution,
+              );
+            }
+          }
+        }
+      }
+
+      final response = result['response'];
+
+      if (response != null) {
+        return response.toString();
+      }
+
+      final resultValue = result['result'];
+
+      if (resultValue != null) {
+        return resultValue.toString();
+      }
+    }
+
+    return result?.toString() ?? '';
+  }
+
+  // ============================================================
+  // HISTORY DATE FORMAT
+  // ============================================================
+
+  String _formatHistoryDate(String value) {
+    try {
+      final parsed = DateTime.parse(value);
+
+      final day =
+          parsed.day.toString().padLeft(2, '0');
+
+      final month =
+          parsed.month.toString().padLeft(2, '0');
+
+      final year = parsed.year;
+
+      final hour = parsed.hour % 12 == 0
+          ? 12
+          : parsed.hour % 12;
+
+      final minute =
+          parsed.minute.toString().padLeft(2, '0');
+
+      final period =
+          parsed.hour >= 12
+              ? 'PM'
+              : 'AM';
+
+      return '$day/$month/$year '
+          '$hour:$minute $period';
+    } catch (_) {
+      return value;
+    }
+  }
+
+  // ============================================================
+  // LOAD OLD CONVERSATION
+  // ============================================================
+
+  void _loadConversation(
+    Map<dynamic, dynamic> item,
+  ) {
+    final task =
+        item['task']?.toString() ?? '';
+
+    final result =
+        item['result'];
+
+    final response =
+        _historyPreview(result);
+
+    setState(() {
+      _messages.clear();
+
+      _messages.add(
+        ChatMessage(
+          text: task,
+          isUser: true,
+        ),
+      );
+
+      _messages.add(
+        ChatMessage(
+          text: response,
+          isUser: false,
+        ),
+      );
+    });
+
+    _scrollToBottom();
+  }
+
+  // ============================================================
   // AUTO SCROLL
-  // ------------------------------------------------------------
+  // ============================================================
 
   void _scrollToBottom() {
     Future.delayed(
-      const Duration(milliseconds: 100),
+      const Duration(
+        milliseconds: 100,
+      ),
       () {
         if (_scrollController.hasClients) {
           _scrollController.animateTo(
-            _scrollController.position.maxScrollExtent,
-            duration: const Duration(milliseconds: 300),
+            _scrollController
+                .position
+                .maxScrollExtent,
+            duration: const Duration(
+              milliseconds: 300,
+            ),
             curve: Curves.easeOut,
           );
         }
@@ -408,35 +754,47 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
+  // ============================================================
+  // DISPOSE
+  // ============================================================
+
   @override
   void dispose() {
     _controller.dispose();
     _scrollController.dispose();
+
     super.dispose();
   }
 
-  // ------------------------------------------------------------
+  // ============================================================
   // MESSAGE UI
-  // ------------------------------------------------------------
+  // ============================================================
 
-  Widget _buildMessage(ChatMessage message) {
+  Widget _buildMessage(
+    ChatMessage message,
+  ) {
     final isUser = message.isUser;
 
     return Align(
-      alignment:
-          isUser ? Alignment.centerRight : Alignment.centerLeft,
+      alignment: isUser
+          ? Alignment.centerRight
+          : Alignment.centerLeft,
       child: Container(
-        constraints: const BoxConstraints(
+        constraints:
+            const BoxConstraints(
           maxWidth: 700,
         ),
-        margin: const EdgeInsets.only(
+        margin:
+            const EdgeInsets.only(
           bottom: 12,
         ),
-        padding: const EdgeInsets.symmetric(
+        padding:
+            const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 12,
         ),
-        decoration: BoxDecoration(
+        decoration:
+            BoxDecoration(
           color: isUser
               ? Theme.of(context)
                   .colorScheme
@@ -444,52 +802,66 @@ class _ChatPageState extends State<ChatPage> {
               : Theme.of(context)
                   .colorScheme
                   .surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius:
+              BorderRadius.circular(18),
         ),
         child: isUser
             ? Text(
                 message.text,
-                style: const TextStyle(
+                style:
+                    const TextStyle(
                   fontSize: 16,
                 ),
               )
             : MarkdownBody(
                 data: message.text,
                 selectable: true,
-                styleSheet: MarkdownStyleSheet(
+                styleSheet:
+                    MarkdownStyleSheet(
                   p: const TextStyle(
                     fontSize: 16,
                     height: 1.5,
                   ),
                   h1: const TextStyle(
                     fontSize: 24,
-                    fontWeight: FontWeight.bold,
+                    fontWeight:
+                        FontWeight.bold,
                   ),
                   h2: const TextStyle(
                     fontSize: 21,
-                    fontWeight: FontWeight.bold,
+                    fontWeight:
+                        FontWeight.bold,
                   ),
                   h3: const TextStyle(
                     fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                    fontWeight:
+                        FontWeight.bold,
                   ),
-                  strong: const TextStyle(
-                    fontWeight: FontWeight.bold,
+                  strong:
+                      const TextStyle(
+                    fontWeight:
+                        FontWeight.bold,
                   ),
-                  code: const TextStyle(
+                  code:
+                      const TextStyle(
                     fontSize: 14,
-                    fontFamily: 'monospace',
+                    fontFamily:
+                        'monospace',
                   ),
                   codeblockPadding:
-                      const EdgeInsets.all(12),
+                      const EdgeInsets.all(
+                    12,
+                  ),
                   codeblockDecoration:
                       const BoxDecoration(
                     color: Colors.black12,
-                    borderRadius: BorderRadius.all(
+                    borderRadius:
+                        BorderRadius.all(
                       Radius.circular(10),
                     ),
                   ),
-                  listBullet: const TextStyle(
+                  listBullet:
+                      const TextStyle(
                     fontSize: 16,
                   ),
                 ),
@@ -498,9 +870,9 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
-  // ------------------------------------------------------------
+  // ============================================================
   // MAIN UI
-  // ------------------------------------------------------------
+  // ============================================================
 
   @override
   Widget build(BuildContext context) {
@@ -509,26 +881,45 @@ class _ChatPageState extends State<ChatPage> {
         title: const Row(
           children: [
             CircleAvatar(
-              child: Icon(Icons.smart_toy),
+              child: Icon(
+                Icons.smart_toy,
+              ),
             ),
             SizedBox(width: 12),
             Text(
               'Agentic AI',
               style: TextStyle(
-                fontWeight: FontWeight.bold,
+                fontWeight:
+                    FontWeight.bold,
               ),
             ),
           ],
         ),
+        actions: [
+          IconButton(
+            tooltip: 'Chat History',
+            icon: const Icon(
+              Icons.history,
+            ),
+            onPressed:
+                _showChatHistory,
+          ),
+        ],
       ),
       body: Column(
         children: [
           Expanded(
             child: ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.all(16),
-              itemCount: _messages.length,
-              itemBuilder: (context, index) {
+              controller:
+                  _scrollController,
+              padding:
+                  const EdgeInsets.all(
+                16,
+              ),
+              itemCount:
+                  _messages.length,
+              itemBuilder:
+                  (context, index) {
                 return _buildMessage(
                   _messages[index],
                 );
@@ -538,18 +929,21 @@ class _ChatPageState extends State<ChatPage> {
 
           if (_isLoading)
             const Padding(
-              padding: EdgeInsets.only(
+              padding:
+                  EdgeInsets.only(
                 left: 16,
                 bottom: 8,
               ),
               child: Align(
-                alignment: Alignment.centerLeft,
+                alignment:
+                    Alignment.centerLeft,
                 child: Row(
                   children: [
                     SizedBox(
                       width: 18,
                       height: 18,
-                      child: CircularProgressIndicator(
+                      child:
+                          CircularProgressIndicator(
                         strokeWidth: 2,
                       ),
                     ),
@@ -564,7 +958,8 @@ class _ChatPageState extends State<ChatPage> {
 
           SafeArea(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(
+              padding:
+                  const EdgeInsets.fromLTRB(
                 12,
                 8,
                 12,
@@ -574,31 +969,45 @@ class _ChatPageState extends State<ChatPage> {
                 children: [
                   Expanded(
                     child: TextField(
-                      controller: _controller,
+                      controller:
+                          _controller,
                       textInputAction:
-                          TextInputAction.send,
-                      onSubmitted: (_) =>
-                          _sendMessage(),
-                      decoration: InputDecoration(
+                          TextInputAction
+                              .send,
+                      onSubmitted:
+                          (_) =>
+                              _sendMessage(),
+                      decoration:
+                          InputDecoration(
                         hintText:
                             'Ask Agentic AI...',
-                        border: OutlineInputBorder(
+                        border:
+                            OutlineInputBorder(
                           borderRadius:
-                              BorderRadius.circular(28),
+                              BorderRadius
+                                  .circular(
+                            28,
+                          ),
                         ),
                         contentPadding:
-                            const EdgeInsets.symmetric(
+                            const EdgeInsets
+                                .symmetric(
                           horizontal: 20,
                           vertical: 14,
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(
+                    width: 8,
+                  ),
                   FloatingActionButton(
                     onPressed:
-                        _isLoading ? null : _sendMessage,
-                    child: const Icon(
+                        _isLoading
+                            ? null
+                            : _sendMessage,
+                    child:
+                        const Icon(
                       Icons.send,
                     ),
                   ),
